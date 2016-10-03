@@ -1,55 +1,38 @@
 package com.tapatron.reg.video;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-@JsonDeserialize(builder = Movie.Builder.class)
+import dk.nykredit.jackson.dataformat.hal.HALLink;
+import dk.nykredit.jackson.dataformat.hal.annotation.Link;
+import dk.nykredit.jackson.dataformat.hal.annotation.Resource;
+
+@Resource
 public class Movie {
-    private final long id;
-    private final String name;
-    private final Genre genre;
 
-    public Movie(long id, String name, Genre genre) {
-        this.id = id;
-        this.name = name;
-        this.genre = genre;
-    }
+  private final long id;
+  private final String name;
 
-    public long getId() {
-        return id;
-    }
+  @Link
+  private HALLink genre;
 
-    public String getName() {
-        return name;
-    }
+  public Movie(
+      @JsonProperty(value = "id") long id,
+      @JsonProperty(value = "name") String name,
+      @JsonProperty(value = "genre") HALLink genre) {
+    this.id = id;
+    this.name = name;
+    this.genre = genre;
+  }
 
-    public Genre getGenre() {
-        return genre;
-    }
+  public long getId() {
+    return id;
+  }
 
-    @JsonPOJOBuilder
-    public static class Builder {
-        private long id;
-        private String name;
-        private Genre genre;
+  public String getName() {
+    return name;
+  }
 
-        public Builder withId(long id) {
-            this.id = id;
-            return this;
-        }
-
-        public Builder withName(String name) {
-            this.name = name;
-            return this;
-        }
-
-        public Builder withGenre(Genre genre) {
-            this.genre = genre;
-            return this;
-        }
-
-        public Movie build() {
-            return new Movie(id, name, genre);
-        }
-    }
+  public HALLink getGenre() {
+    return genre;
+  }
 }
