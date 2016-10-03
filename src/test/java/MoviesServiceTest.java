@@ -1,6 +1,7 @@
 import com.google.inject.Binder;
 import com.google.inject.assistedinject.FactoryModuleBuilder;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.tapatron.reg.video.Genre;
 import com.tapatron.reg.video.GenreResource;
 import com.tapatron.reg.video.GenreService;
@@ -16,56 +17,67 @@ import org.junit.Test;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 
+import dk.nykredit.jackson.dataformat.hal.HALMapper;
 import utils.JettyGuiceRestEasyTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 public class MoviesServiceTest extends JettyGuiceRestEasyTest {
-    private static final String BASE_URL = "http://localhost:9000";
+  private static final String BASE_URL = "http://localhost:9000";
 
-    @Override
-    protected void configure(Binder b) {
-        b.bind(GenreResource.class).to(GenreService.class);
-        b.install(new FactoryModuleBuilder()
-            .implement(MoviesResource.class, MoviesService.class)
-            .build(MoviesResourceFactory.class));
+  @Override
+  protected void configure(Binder b) {
+    b.bind(GenreResource.class).to(GenreService.class);
+    b.install(new FactoryModuleBuilder()
+        .implement(MoviesResource.class, MoviesService.class)
+        .build(MoviesResourceFactory.class));
+  }
+
+  @Test
+  public void getsTheGenre() {
+    Client client = ClientBuilder.newClient();
+    assertThat(client.target(BASE_URL)
+        .path("/genre/horror")
+        .request()
+        .get(Genre.class).getName()).isEqualTo("horror");
+  }
+
+  @Test
+  public void getsTheMovie() {
+    Client client = ClientBuilder.newClient();
+    Movie movie = client.target(BASE_URL)
+        .path("/genre/horror/movies/31")
+        .request()
+        .get(Movie.class);
+
+    assertThat(movie.getName()).isEqualTo("Jaws");
+
+    // print
+    try {
+      System.out.println(new HALMapper().writeValueAsString(movie));
+    } catch (JsonProcessingException e) {
+      fail(e.getMessage());
     }
+  }
 
-    @Test
-    public void getsTheGenre() {
-        Client client = ClientBuilder.newClient();
-        assertThat(client.target(BASE_URL)
-                .path("/genre/horror")
-                .request()
-                .get(Genre.class).getName()).isEqualTo("horror");
-    }
+  @Test
+  public void getsTheGenreUsingClientProxy() throws Exception {
+    ResteasyClient resteasyClient = new ResteasyClientBuilder().build();
+    GenreResource genreResource = resteasyClient.target(BASE_URL).proxy(GenreResource.class);
 
-    @Test
-    public void getsTheMovie() {
-        Client client = ClientBuilder.newClient();
-        assertThat(client.target(BASE_URL)
-            .path("/genre/horror/movies/31")
-            .request()
-            .get(Movie.class).getName()).isEqualTo("Jaws");
-    }
+    Genre genre = genreResource.genre("horror");
 
-    @Test
-    public void getsTheGenreUsingClientProxy() throws Exception {
-        ResteasyClient resteasyClient = new ResteasyClientBuilder().build();
-        GenreResource genreResource = resteasyClient.target(BASE_URL).proxy(GenreResource.class);
+    assertThat(genre.getName()).isEqualTo("horror");
+  }
 
-        Genre genre = genreResource.genre("horror");
+  @Test
+  public void getsTheMovieSubResourceUsingClientProxy() throws Exception {
+    ResteasyClient resteasyClient = new ResteasyClientBuilder().build();
+    GenreResource genreResource = resteasyClient.target(BASE_URL).proxy(GenreResource.class);
 
-        assertThat(genre.getName()).isEqualTo("horror");
-    }
+    Movie movie = genreResource.moviesResource("horror").movie(31);
 
-    @Test
-    public void getsTheMovieSubResourceUsingClientProxy() throws Exception {
-        ResteasyClient resteasyClient = new ResteasyClientBuilder().build();
-        GenreResource genreResource = resteasyClient.target(BASE_URL).proxy(GenreResource.class);
-
-        Movie movie = genreResource.moviesResource("horror").movie(31);
-
-        assertThat(movie.getName()).isEqualTo("Jaws");
-    }
+    assertThat(movie.getName()).isEqualTo("Jaws");
+  }
 }
